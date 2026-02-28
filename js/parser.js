@@ -386,7 +386,8 @@ Parser._getSpeedString_addSpeed = ({prop, speed, isMetric, unit, stack, styleHin
 	const ptValue = Parser._getSpeedString_getVal({prop, speed, isMetric});
 	const ptUnit = speed === true ? "" : ` ${unit}`;
 	const ptCondition = Parser._getSpeedString_getCondition({speed});
-	stack.push([ptName, ptValue, ptUnit, ptCondition].join(""));
+	const speedSquares = UtilsUnitFormatter.formatSquares(speed, "feet", false, true);
+	stack.push([ptName, ptValue, ptUnit, speedSquares, ptCondition].join(""));
 };
 Parser._getSpeedString_getVal = ({prop, speed, isMetric}) => {
 	if (speed === true && prop !== "walk") return "equal to your walking speed";
@@ -1680,24 +1681,17 @@ Parser.spRangeToFull._renderPoint = function (range) {
 		case Parser.UNT_YARDS:
 		case Parser.UNT_MILES:
 		default:
-			if (VetoolsConfig.get("localization", "isMetric")) {
-				const { value, unit } = Parser.quantity.getMetric({ value: dist.amount, unit: dist.type });
-				return `${value} ${unit}`;
-			}
-			return `${dist.amount} ${dist.amount === 1 ? Parser.getSingletonUnit(dist.type) : dist.type}`;
+			return UtilsUnitFormatter.formatQuantity(dist.amount, dist.type);
 	}
 };
 Parser.spRangeToFull._renderArea = function ({range, styleHint, isDisplaySelfArea = false}) {
 	if (styleHint !== "classic" && !isDisplaySelfArea) return "Self";
 
-	let size = { value: range.distance.amount, unit: range.distance.type };
-	let secondarySize = range.type === Parser.RNG_CYLINDER ? { value: range.distance.amountSecondary, unit: range.distance.typeSecondary } : null;
-	if (VetoolsConfig.get("localization", "isMetric")) {
-		size = Parser.quantity.getMetric(size, true);
-		if (secondarySize) secondarySize = Parser.quantity.getMetric(secondarySize, true);
-	}
+	const size = UtilsUnitFormatter.formatQuantity(range.distance.amount, range.distance.type);
+	const hasSecondarySize = range.type === Parser.RNG_CYLINDER;
+	const secondarySize = hasSecondarySize ? UtilsUnitFormatter.formatQuantity(range.distance.amountSecondary, range.distance.typeSecondary) : null;
 
-	return `Self (${size.value}-${Parser.getSingletonUnit(size.unit)}${Parser.spRangeToFull._getAreaStyleString(range)}${range.type === Parser.RNG_CYLINDER ? `${secondarySize?.value != null && secondarySize?.unit != null ? `, ${secondarySize.value}-${Parser.getSingletonUnit(secondarySize.unit)}-high` : ""} cylinder` : ""})`;
+	return `Self (${size}${Parser.spRangeToFull._getAreaStyleString(range)}${hasSecondarySize ? `, ${secondarySize}-high` : ""} cylinder)`;
 };
 Parser.spRangeToFull._getAreaStyleString = function (range) {
 	switch (range.type) {
@@ -4516,14 +4510,14 @@ Parser.quantity = {
 	// See MPMB's breakdown: https://old.reddit.com/r/dndnext/comments/6gkuec and https://www.aidedd.org/adj/poids-et-mesures/ (in french)
 	MILES_TO_KILOMETRES: 1.5, // 1 mi = 1.5 km
 	FEET_TO_METRES: 0.3, // 5 ft = 1.5 m
-	YARDS_TO_METRES: 0.9, // (as above)
+	YARDS_TO_METRES: 1, // (as above)
 	POUNDS_TO_KILOGRAMS: 0.5, // 2 lb = 1 kg
 	INCHES_TO_CENTIMETERS: 2.5, // 1 in = 2.5 cm
 	OUNCES_TO_CENTILITRES: 3, // 1 oz = 3 cl
 	GALLONS_TO_LITRES: 0.25, // 1 gal = 4 l
 	PINTS_TO_LITRES: 0.5, // 1 pt = 0.5 l
 	QUART_TO_LITRES: 1, // 1 qt = 1 l
-	CUBIC_FEET_TO_LITRES: 28, // 1 ft³ = 28 L
+	CUBIC_FEET_TO_LITRES: 25, // 1 ft³ = 28 L
 
 	UNIT_WORDS_MAP: {
 		"in": "cm",
@@ -4605,7 +4599,7 @@ Parser.quantity = {
  * @param {number|string} quantity.value - The original value to convert.
  * @param {string} quantity.unit - The original unit word for the given value.
  * @param {boolean} isAdjective - If the quantity is being used as an adjective (e.g. "5-foot pole").
- * @returns {Object} The converted quantity in metric, or the original quantity if conversion fails.
+ * @returns {{value: number|string, unit: string}} The converted quantity in metric, or the original quantity if conversion fails.
  */
 	getMetric ({value, unit}, isAdjective = false) {
 		// attempt to convert the unit
@@ -4688,8 +4682,9 @@ Parser.quantity = {
 	 * @param {number} originalValue
 	 * @param {string} originalUnit
 	 * @param {?boolean} toFixed
+	 * @returns {string}
 	 */
-	getMetricNumber ({originalValue, originalUnit, toFixed = null}) {
+	getMetricNumber ({originalValue, originalUnit/*, toFixed = null */}) {
 		if (originalValue == null || isNaN(originalValue)) return originalValue;
 
 		originalValue = Number(originalValue);
@@ -4709,14 +4704,15 @@ Parser.quantity = {
 			case Parser.UNT_CUBIC_FEET: out = originalValue * this.CUBIC_FEET_TO_LITRES; break;
 			default: return originalValue;
 		}
-		if (toFixed != null) return NumberUtil.toFixedNumber(out, toFixed);
-		return out;
+		// round for better readability, keep one decimal for smaller values, round to whole number for larger values
+		const roundedVal = NumberUtil.toFixedNumber(out, out > 2 ? 0 : 1);
+		return roundedVal;
 	},
 
 	/**
 	 * @param {number} originalValue
 	 * @param {boolean} isShortForm
-	 * @param {isPlural} isShortForm
+	 * @param {boolean} isPlural
 	 */
 	getMetricUnit ({originalUnit, isShortForm = false, isPlural = true}) {
 		switch (Parser.getNormalizedUnit(originalUnit)) {

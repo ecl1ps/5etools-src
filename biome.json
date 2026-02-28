@@ -1,0 +1,10 @@
+﻿{
+  "linter": {
+    "rules": {
+      "complexity": {
+        "noStaticOnlyClass": "off",
+		  "useArrowFunction": "off"
+      }
+    }
+  }
+}

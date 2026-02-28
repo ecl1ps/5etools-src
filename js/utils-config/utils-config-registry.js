@@ -65,6 +65,14 @@ const settingsGroupLocalization = new ConfigSettingsGroup({
 			isReloadRequired: true,
 			default: false,
 		}),
+		new ConfigSettingBoolean({
+			configId: "showSquareDistance",
+			name: "Show Distance in Squares",
+			help: "Show distances in feet/meters in squares as well",
+			isRowLabel: true,
+			isReloadRequired: true,
+			default: false,
+		}),
 	],
 });
 

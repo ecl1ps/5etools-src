@@ -1598,11 +1598,8 @@ globalThis.Renderer = function () {
 	};
 
 	this._renderBonusSpeed = function (entry, textStack, meta, options) {
-		let speed = { value: entry.value, unit: "ft." };
-		if (VetoolsConfig.get("localization", "isMetric")) {
-			speed = Parser.quantity.getMetric(speed);
-		}
-		textStack[0] += speed.value === 0 ? "\u2014" : `${speed.value < 0 ? "" : "+"}${speed.value} ${speed.unit}`;
+		const speed = UtilsUnitFormatter.formatQuantity(entry.value, "ft.", true);
+		textStack[0] += entry.value === 0 ? "\u2014" : `${entry.value < 0 ? "" : "+"}${speed}`;
 	};
 
 	this._renderDice = function (entry, textStack, meta, options) {
@@ -2151,14 +2148,7 @@ globalThis.Renderer = function () {
 			case "@quantity": {
 				const [value, unitStr] = Renderer.splitTagByPipe(text);
 				const isAdjective = unitStr.includes("-");
-				let quantity = { value, unit: unitStr.replace("-", "") };
-
-				if (VetoolsConfig.get("localization", "isMetric")) {
-					quantity = Parser.quantity.getMetric(quantity, isAdjective);
-					quantity.value = NumberUtil.toFixedNumber(quantity.value, 2);
-				}
-
-				textStack[0] += `${quantity.value}${isAdjective ? "-" : " "}${quantity.unit}`;
+				textStack[0] += UtilsUnitFormatter.formatQuantity(value, unitStr.replace("-", ""), isAdjective, false);
 				break;
 			}
 

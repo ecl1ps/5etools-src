@@ -9366,3 +9366,48 @@ if (!globalThis.IS_VTT && typeof window !== "undefined") {
 	}
 	// endregion
 }
+
+class UtilsUnitFormatter {
+	/**
+	 * @param {number} value
+	 * @param {string} unit
+	 * @param {boolean?} isAdjective
+	 * @param {boolean?} isShort
+	 * @returns {string}
+	 */
+	static formatQuantity (value, unit, isAdjective = false, isShort = true) {
+		let formatted = null;
+		if (VetoolsConfig.get("localization", "isMetric")) {
+			const { value: metricValue, unit: metricUnit } = Parser.quantity.getMetric({ value, unit });
+			formatted = `${metricValue}${isAdjective ? "-" : " "}${metricUnit}`;
+		} else {
+			formatted = `${value}${isAdjective ? "-" : " "}${value === 1 ? Parser.getSingletonUnit(unit) : unit}`;
+		}
+
+		formatted += UtilsUnitFormatter.formatSquares(value, unit, false, isShort);
+		return formatted;
+	}
+
+	/**
+	 * @param {number|string} value
+	 * @param {string} unit
+	 * @param {boolean?} isAdjective
+	 * @param {boolean?} isShort
+	 * @returns {string}
+	 */
+	static formatSquares (value, unit, isAdjective = false, isShort = true) {
+		if (!VetoolsConfig.get("localization", "showSquareDistance"))
+			return "";
+
+		if (!["feet", "foot", "ft", "ft."].includes(unit))
+			return "";
+
+		const cleanValue = parseInt(value, 10);
+
+		const sqValue = NumberUtil.toFixedNumber(cleanValue / 5, cleanValue > 5 ? 0 : 1);
+
+		return `${isAdjective ? "-" : " "}(${sqValue}${isAdjective ? "-" : " "}${isShort ? "sq." : sqValue === 1 ? "square" : "squares"})`;
+	}
+}
+
+globalThis.UtilsUnitFormatter = UtilsUnitFormatter;
